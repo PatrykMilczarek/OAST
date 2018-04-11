@@ -1,15 +1,18 @@
 const fs = require('fs');
-const input_source = "./input.txt";
+const input_source = "./input2.txt";
+
+
+// parametry algorytmu
 const table_length = 1000;
 var seedrandom = require('seedrandom');
 var randomize = seedrandom('oast');
 var p = 0.5;
 var p_cross = 0.3;
 var p_mutate = 0.04;
-const max_cross_number = 1000;
-const max_mutation_number = 50;
-const max_no_change_generations = 25;
-const max_time = 5;
+const max_cross_number = 10000000;
+const max_mutation_number = 500000;
+const max_no_change_generations = 2500000;
+const max_time = 15;
 var cross_number = 0;
 var mutation_number = 0;
 var no_change_generations = 0;
@@ -103,16 +106,16 @@ fs.readFile(input_source, 'utf8', (err, data) => {
 
         if (old_F == best_F){
           no_change_generations++;
-          console.log("no change:" + no_change_generations);
+          //console.log("no change:" + no_change_generations);
         }
         else {
             no_change_generations = 0;
         }
 
         old_F = best_F;
-        console.log(best_F);
-        console.log("mutation_number: " + mutation_number);
-        console.log("cross_number: " + cross_number);
+        console.log("F: " + best_F);
+        //console.log("mutation_number: " + mutation_number);
+      //  console.log("cross_number: " + cross_number);
 
         current_time = new Date().getSeconds();
 
@@ -151,8 +154,6 @@ var link_computation = function(data_object, result_table) {
     }
 
     for (var e = 0; e < data_object.links.length; e++) {
-
-        var M = parseInt(data_object.links[e].number_of_lambdas_in_fibre);
 
         link_capacity[e] = link_load[e];
 
@@ -278,7 +279,7 @@ var solve = function(algorithm, data_object, input_table) {
 
 var create_solution_file = function(result_table, link_comp_array, link_load_array) {
 
-    let writeStream = fs.createWriteStream('output.txt');
+    let writeStream = fs.createWriteStream('solution.txt');
     var output = '';
 
     //number_of_links

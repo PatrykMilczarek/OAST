@@ -1,6 +1,7 @@
 const fs = require('fs');
 const input_source = "./input2.txt";
 
+const method = "bruteforce";
 
 // parametry algorytmu
 const table_length = 1000;
@@ -33,7 +34,7 @@ fs.readFile(input_source, 'utf8', (err, data) => {
     data = data.split("\r\n");
 
 
-    //Start of reading links
+    //Start reading links
     data_object["number_of_links"] = data[0];
 
     for (var i = 1; i < data.length; i++) {
@@ -52,7 +53,7 @@ fs.readFile(input_source, 'utf8', (err, data) => {
 
     }
 
-    //Start of reading demands
+    //Start reading demands
     i = i + 2;
 
     data_object["number_of_demands"] = data[i];
@@ -83,30 +84,41 @@ fs.readFile(input_source, 'utf8', (err, data) => {
 
     var result_table = create_table(data_object, table_length);
 
-
-    //solve("bruteforce", data_object, result_table);
     var start_time = new Date().getSeconds();
     var current_time = new Date().getSeconds();
     var old_F = 0;
-    var best_F = 0;
+    var best_F = 0.5;
     var trajectory = [];
 
 
-    while ((current_time - start_time <= max_time) && (no_change_generations != max_no_change_generations) && (cross_number < max_cross_number) && (mutation_number < max_mutation_number)) {
+    while ((current_time - start_time <= max_time) && (no_change_generations != max_no_change_generations) && (cross_number < max_cross_number) && (mutation_number < max_mutation_number) && best_F !== 0) {
         console.log("time: " + (current_time - start_time));
 
-        var evolution_table = evolution(result_table);
 
-        for (var element of evolution_table)
-            result_table.push(element);
+        switch (method) {
+
+          case "evolution":
+
+          var evolution_table = evolution(result_table);
+          for (var element of evolution_table)
+              result_table.push(element);
 
 
+          [result_table, best_F] = solve(method, data_object, result_table);
+          trajectory.push(best_F);
+          break;
 
-        [result_table, best_F] = solve("evolution", data_object, result_table);
+          case "bruteforce":
+
+          [result_table, best_F] = solve(method, data_object, result_table);
+          trajectory.push(best_F);
+          break;
+        }
+
 
         if (old_F == best_F){
           no_change_generations++;
-          //console.log("no change:" + no_change_generations);
+
         }
         else {
             no_change_generations = 0;
@@ -114,20 +126,26 @@ fs.readFile(input_source, 'utf8', (err, data) => {
 
         old_F = best_F;
         console.log("F: " + best_F);
-        //console.log("mutation_number: " + mutation_number);
-      //  console.log("cross_number: " + cross_number);
+
 
         current_time = new Date().getSeconds();
 
-        trajectory.push(best_F);
+
 
 
     }
 
+      if(method == "evolution") {
+        var link_comp = link_computation(data_object, result_table);
+        create_solution_file(result_table[0], link_comp[0], link_comp[1]);
+      }else if(method == "bruteforce") {
+        var link_comp = link_computation(data_object, result_table);
+        create_solution_file(result_table, link_comp[0], link_comp[1]);
+      }
 
-    var link_comp = link_computation(data_object, result_table);
-    create_solution_file(result_table[0], link_comp[0], link_comp[1]);
-    create_trajectory_file(trajectory);
+      create_trajectory_file(trajectory);
+
+
 
 });
 
@@ -147,6 +165,7 @@ var link_computation = function(data_object, result_table) {
             for (var e = 1; e <= data_object.links.length; e++) {
                 var path = demand.demand_path_list[p];
                 if (path.links.includes(e + '')) {
+
                     link_load[e - 1] += parseInt(result_table[d][p - 1]);
                 }
             }
@@ -158,10 +177,8 @@ var link_computation = function(data_object, result_table) {
         link_capacity[e] = link_load[e];
 
     }
-    // console.log(result_table);
-    // console.log(link_capacity);
-    return [link_capacity, link_load];
 
+    return [link_capacity, link_load];
 
 }
 
@@ -222,36 +239,27 @@ var solve = function(algorithm, data_object, input_table) {
         var link_load_array = link_comp[1];
         var max_overload = new Array();
 
-        //for(var e = 0; e < data_object.links.length; e++) {
+
         for (var l = 0; l < link_comp_array.length; l++) {
-            //      console.log(link_comp_array[l]);
 
             max_overload.push(Math.max(0, link_comp_array[l] - data_object.links[l].number_of_lambdas_in_fibre * data_object.links[l].number_of_fibre_pairs_in_cable));
 
         }
-        //  }
+
 
         F[index] = Math.max(...max_overload);
 
-        //    console.log(F);
+
         if (algorithm == "bruteforce") {
+
             if (F[index] == 0) {
-                create_solution_file(table, link_comp_array, link_load_array);
-                return;
+
+                return [table, F[index]];
+
             }
         } else if (algorithm == "evolution") {
 
-
             F_table_indexed.push([F[index], index]);
-
-
-
-
-            // if(F <= 5) {
-            //   create_solution_file(table, link_comp_array, link_load_array);
-            //   return;
-            // }
-
 
         }
 
@@ -265,21 +273,16 @@ var solve = function(algorithm, data_object, input_table) {
 
 
         for (var i = 0; i < table_length; i++) {
-            //       console.log(F_table_indexed[i][1]);
             result_table.push(input_table[F_table_indexed[i][1]]);
         }
-        //  console.log(result_table);
-        // var link_comp = link_computation(data_object, result_table);
-        // create_solution_file(result_table, link_comp[0], link_comp[1]);
-
+        return [result_table, F_table_indexed[0][0]];
     }
-    //console.log(F_table_indexed);
-    return [result_table, F_table_indexed[0][0]];
+
 }
 
 var create_solution_file = function(result_table, link_comp_array, link_load_array) {
 
-    let writeStream = fs.createWriteStream('solution.txt');
+    let writeStream = fs.createWriteStream(method + '-solution.txt');
     var output = '';
 
     //number_of_links
@@ -337,20 +340,16 @@ var create_trajectory_file = function(fun_solution) {
 
 var evolution = function(input_table) {
     var result_table = new Array();
-    //  console.log(result_table[0][0]);
+
     var test_table = [];
 
     for (var element of input_table)
         test_table.push(element);
 
     input_table = shuffle(test_table);
-    //    console.log(result_table[0][0]);
+
     var table1 = input_table.slice(0, input_table.length / 2 - 1);
     var table2 = input_table.slice(input_table.length / 2, input_table.length);
-
-
-
-
 
     for (var i = 0; i < table1.length; i++) {
         var rand = randomize();
@@ -371,7 +370,6 @@ var evolution = function(input_table) {
 
     }
 
-    // console.log(result_table);
     return result_table;
 }
 
@@ -394,8 +392,7 @@ var cross = function(table1, table2) {
         }
 
     }
-    //    console.log(table_result[0]);
-    //    console.log("XXXXXXXXXXXXXXxx");
+
     cross_number++;
     return table_result;
 }
